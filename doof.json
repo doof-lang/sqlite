@@ -1,0 +1,16 @@
+{
+  "name": "std/sqlite",
+  "version": "0.1.0",
+  "license": "ISC",
+  "build": {
+    "native": {
+      "extraCopyPaths": [
+        "./native_sqlite.hpp"
+      ],
+      "linkLibraries": [
+        "sqlite3"
+      ]
+    }
+  },
+  "dependencies": {}
+}
