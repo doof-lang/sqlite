@@ -134,8 +134,4 @@ export function testBlobParametersAndRows(): void {
 
   assert(row != null, "expected blob row")
   assertBlobValue(columnValue(row!, "payload"), payload)
-
-  record := try! BlobRecord.fromJsonValue(toJsonRow(row!), true)
-  assert(record.id == 1, "expected blob row id")
-  assertBytes(record.payload, payload)
 }

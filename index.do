@@ -209,20 +209,39 @@ function step(statement: Statement): Result<Map<string, SqliteValue> | null, Sql
 
 class RowStream {
   statement: Statement
+  currentRow: Map<string, SqliteValue> = {}
+  currentError: SqliteError | null = null
 
-  next(): Result<Map<string, SqliteValue>, SqliteError> | null {
+  next(): bool {
     case statement.native.step() {
       s: Success -> {
         if s.value {
-          return readCurrentRow(statement)
+          case readCurrentRow(statement) {
+            row: Success -> {
+              this.currentRow = row.value
+              this.currentError = null
+            }
+            err: Failure -> {
+              this.currentError = err.error
+            }
+          }
+          return true
         } else {
-          return null
+          return false
         }
       }
-      f: Failure -> return Failure {
-        error: decodeError("step", f.error, statement.sql)
+      f: Failure -> {
+        this.currentError = decodeError("step", f.error, statement.sql)
+        return true
       }
     }
+  }
+
+  value(): Result<Map<string, SqliteValue>, SqliteError> {
+    if this.currentError != null {
+      return Failure { error: this.currentError! }
+    }
+    return Success { value: this.currentRow }
   }
 }
 
@@ -264,12 +283,11 @@ export function executeSql(database: Database, sql: string): Result<ExecResult, 
 
 export function queryOne(statement: Statement, values: SqliteParam[] = []): Result<Map<string, SqliteValue> | null, SqliteError> {
   try stream := query(statement, values)
-  n := stream.next()
-  if n == null {
+  if !stream.next() {
     return Success { value: emptyRow() }
   }
 
-  case n! {
+  case stream.value() {
     s: Success -> return Success { value: s.value }
     f: Failure -> return Failure { error: f.error }
   }
