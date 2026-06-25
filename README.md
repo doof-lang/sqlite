@@ -2,6 +2,12 @@
 
 Small `Result`-first SQLite wrapper for Doof programs. It supports opening SQLite databases, executing SQL, prepared statements with positional parameters, streaming result rows, single-row queries, and basic transaction helpers.
 
+## Documentation
+
+- [Guide and API reference](docs/API.md) explains connection lifecycle, prepared statements, value mapping, streaming rows, transactions, and errors.
+- Tests can be run with `doof test sqlite`.
+- [Sample program](sample.do) demonstrates a minimal end-to-end workflow.
+
 ## Usage
 
 ```doof
