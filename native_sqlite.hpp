@@ -19,7 +19,7 @@ std::string encodeSqliteError(int code, const std::string& message) {
 }
 
 doof::Result<void, std::string> sqliteOk() {
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 } // namespace
@@ -77,7 +77,7 @@ public:
     doof::Result<void, std::string> bindBlob(int32_t index, const NativeSqliteBlob& value) {
         const auto& bytes = value != nullptr ? *value : emptyBlob();
         if (bytes.size() > static_cast<size_t>(std::numeric_limits<int>::max())) {
-            return doof::Result<void, std::string>::failure(encodeSqliteError(SQLITE_TOOBIG, "BLOB parameter is too large"));
+            return doof::Failure<std::string>{encodeSqliteError(SQLITE_TOOBIG, "BLOB parameter is too large")};
         }
 
         const void* data = bytes.empty() ? nullptr : static_cast<const void*>(bytes.data());
@@ -90,32 +90,32 @@ public:
 
     doof::Result<bool, std::string> step() {
         if (stmt_ == nullptr) {
-            return doof::Result<bool, std::string>::failure(encodeSqliteError(SQLITE_MISUSE, "statement is already finalized"));
+            return doof::Failure<std::string>{encodeSqliteError(SQLITE_MISUSE, "statement is already finalized")};
         }
 
         const int rc = sqlite3_step(stmt_);
         if (rc == SQLITE_ROW) {
-            return doof::Result<bool, std::string>::success(true);
+            return doof::Success<bool>{true};
         }
         if (rc == SQLITE_DONE) {
-            return doof::Result<bool, std::string>::success(false);
+            return doof::Success<bool>{false};
         }
-        return doof::Result<bool, std::string>::failure(makeError(rc));
+        return doof::Failure<std::string>{makeError(rc)};
     }
 
     doof::Result<void, std::string> reset() {
         if (stmt_ == nullptr) {
-            return doof::Result<void, std::string>::failure(encodeSqliteError(SQLITE_MISUSE, "statement is already finalized"));
+            return doof::Failure<std::string>{encodeSqliteError(SQLITE_MISUSE, "statement is already finalized")};
         }
 
         const int resetRc = sqlite3_reset(stmt_);
         if (resetRc != SQLITE_OK) {
-            return doof::Result<void, std::string>::failure(makeError(resetRc));
+            return doof::Failure<std::string>{makeError(resetRc)};
         }
 
         const int clearRc = sqlite3_clear_bindings(stmt_);
         if (clearRc != SQLITE_OK) {
-            return doof::Result<void, std::string>::failure(makeError(clearRc));
+            return doof::Failure<std::string>{makeError(clearRc)};
         }
 
         return sqliteOk();
@@ -129,7 +129,7 @@ public:
         const int rc = sqlite3_finalize(stmt_);
         stmt_ = nullptr;
         if (rc != SQLITE_OK) {
-            return doof::Result<void, std::string>::failure(encodeSqliteError(rc, sqlite3_errstr(rc)));
+            return doof::Failure<std::string>{encodeSqliteError(rc, sqlite3_errstr(rc))};
         }
 
         return sqliteOk();
@@ -137,10 +137,10 @@ public:
 
     doof::Result<NativeSqliteRow, std::string> readCurrentRow() {
         if (stmt_ == nullptr) {
-            return doof::Result<NativeSqliteRow, std::string>::failure(encodeSqliteError(SQLITE_MISUSE, "statement is already finalized"));
+            return doof::Failure<std::string>{encodeSqliteError(SQLITE_MISUSE, "statement is already finalized")};
         }
         if (sqlite3_data_count(stmt_) == 0) {
-            return doof::Result<NativeSqliteRow, std::string>::failure(encodeSqliteError(SQLITE_MISUSE, "statement is not positioned on a row"));
+            return doof::Failure<std::string>{encodeSqliteError(SQLITE_MISUSE, "statement is not positioned on a row")};
         }
 
         auto row = std::make_shared<doof::ordered_map<std::string, NativeSqliteValue>>();
@@ -148,12 +148,12 @@ public:
         for (int index = 0; index < count; ++index) {
             const char* rawName = sqlite3_column_name(stmt_, index);
             if (rawName == nullptr) {
-                return doof::Result<NativeSqliteRow, std::string>::failure(encodeSqliteError(SQLITE_ERROR, "column has no name"));
+                return doof::Failure<std::string>{encodeSqliteError(SQLITE_ERROR, "column has no name")};
             }
 
             std::string name(rawName);
             if (row->find(name) != row->end()) {
-                return doof::Result<NativeSqliteRow, std::string>::failure(encodeSqliteError(SQLITE_ERROR, "duplicate column name: " + name));
+                return doof::Failure<std::string>{encodeSqliteError(SQLITE_ERROR, "duplicate column name: " + name)};
             }
 
             switch (sqlite3_column_type(stmt_, index)) {
@@ -182,7 +182,7 @@ public:
                     auto bytes = std::make_shared<std::vector<uint8_t>>();
                     if (size > 0) {
                         if (blob == nullptr) {
-                            return doof::Result<NativeSqliteRow, std::string>::failure(encodeSqliteError(SQLITE_ERROR, "BLOB column data is unavailable"));
+                            return doof::Failure<std::string>{encodeSqliteError(SQLITE_ERROR, "BLOB column data is unavailable")};
                         }
                         bytes->assign(blob, blob + size);
                     }
@@ -190,11 +190,11 @@ public:
                     break;
                 }
                 default:
-                    return doof::Result<NativeSqliteRow, std::string>::failure(encodeSqliteError(SQLITE_ERROR, "unsupported sqlite column type"));
+                    return doof::Failure<std::string>{encodeSqliteError(SQLITE_ERROR, "unsupported sqlite column type")};
             }
         }
 
-        return doof::Result<NativeSqliteRow, std::string>::success(row);
+        return doof::Success<NativeSqliteRow>{row};
     }
 
 private:
@@ -205,7 +205,7 @@ private:
 
     doof::Result<void, std::string> bindResult(int rc) {
         if (rc != SQLITE_OK) {
-            return doof::Result<void, std::string>::failure(makeError(rc));
+            return doof::Failure<std::string>{makeError(rc)};
         }
         return sqliteOk();
     }
@@ -230,9 +230,9 @@ public:
         auto database = std::make_shared<NativeSqliteDatabase>();
         const int rc = database->openInternal(path);
         if (rc != SQLITE_OK) {
-            return doof::Result<std::shared_ptr<NativeSqliteDatabase>, std::string>::failure(database->notOpenError());
+            return doof::Failure<std::string>{database->notOpenError()};
         }
-        return doof::Result<std::shared_ptr<NativeSqliteDatabase>, std::string>::success(database);
+        return doof::Success<std::shared_ptr<NativeSqliteDatabase>>{database};
     }
 
     NativeSqliteDatabase() = default;
@@ -246,7 +246,7 @@ public:
 
     doof::Result<std::shared_ptr<NativeExecResult>, std::string> exec(const std::string& sql) {
         if (db_ == nullptr) {
-            return doof::Result<std::shared_ptr<NativeExecResult>, std::string>::failure(notOpenError());
+            return doof::Failure<std::string>{notOpenError()};
         }
 
         char* errorMessage = nullptr;
@@ -256,31 +256,27 @@ public:
             if (errorMessage != nullptr) {
                 sqlite3_free(errorMessage);
             }
-            return doof::Result<std::shared_ptr<NativeExecResult>, std::string>::failure(encodeSqliteError(rc, text));
+            return doof::Failure<std::string>{encodeSqliteError(rc, text)};
         }
 
-        return doof::Result<std::shared_ptr<NativeExecResult>, std::string>::success(
-            std::make_shared<NativeExecResult>(sqlite3_changes(db_), sqlite3_last_insert_rowid(db_))
-        );
+        return doof::Success<std::shared_ptr<NativeExecResult>>{std::make_shared<NativeExecResult>(sqlite3_changes(db_), sqlite3_last_insert_rowid(db_))};
     }
 
     doof::Result<std::shared_ptr<NativeSqliteStatement>, std::string> prepare(const std::string& sql) {
         if (db_ == nullptr) {
-            return doof::Result<std::shared_ptr<NativeSqliteStatement>, std::string>::failure(notOpenError());
+            return doof::Failure<std::string>{notOpenError()};
         }
 
         sqlite3_stmt* stmt = nullptr;
         const int rc = sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr);
         if (rc != SQLITE_OK) {
-            return doof::Result<std::shared_ptr<NativeSqliteStatement>, std::string>::failure(encodeSqliteError(rc, sqlite3_errmsg(db_)));
+            return doof::Failure<std::string>{encodeSqliteError(rc, sqlite3_errmsg(db_))};
         }
         if (stmt == nullptr) {
-            return doof::Result<std::shared_ptr<NativeSqliteStatement>, std::string>::failure(encodeSqliteError(SQLITE_MISUSE, "SQL did not contain a statement"));
+            return doof::Failure<std::string>{encodeSqliteError(SQLITE_MISUSE, "SQL did not contain a statement")};
         }
 
-        return doof::Result<std::shared_ptr<NativeSqliteStatement>, std::string>::success(
-            std::make_shared<NativeSqliteStatement>(stmt, sql)
-        );
+        return doof::Success<std::shared_ptr<NativeSqliteStatement>>{std::make_shared<NativeSqliteStatement>(stmt, sql)};
     }
 
     doof::Result<void, std::string> close() {
@@ -290,7 +286,7 @@ public:
 
         const int rc = sqlite3_close_v2(db_);
         if (rc != SQLITE_OK) {
-            return doof::Result<void, std::string>::failure(encodeSqliteError(rc, sqlite3_errmsg(db_)));
+            return doof::Failure<std::string>{encodeSqliteError(rc, sqlite3_errmsg(db_))};
         }
 
         db_ = nullptr;

@@ -207,7 +207,7 @@ function step(statement: Statement): Result<Map<string, SqliteValue> | null, Sql
   }
 }
 
-class RowStream {
+class RowStream implements Stream<Result<Map<string, SqliteValue>, SqliteError> > {
   statement: Statement
   currentRow: Map<string, SqliteValue> = {}
   currentError: SqliteError | null = null
