@@ -4,30 +4,30 @@ export type SqliteParam = int | long | bool | double | string | readonly byte[] 
 export type SqliteValue = long | double | string | readonly byte[] | null
 
 export import class NativeSqliteDatabase from "./native_sqlite.hpp" {
-  static open(path: string): Result<NativeSqliteDatabase, string>
-  exec(sql: string): Result<NativeExecResult, string>
-  prepare(sql: string): Result<NativeSqliteStatement, string>
-  close(): Result<void, string>
-  changes(): int
-  lastInsertRowId(): long
+  isolated static open(path: string): Result<NativeSqliteDatabase, string>
+  isolated exec(sql: string): Result<NativeExecResult, string>
+  isolated prepare(sql: string): Result<NativeSqliteStatement, string>
+  isolated close(): Result<void, string>
+  isolated changes(): int
+  isolated lastInsertRowId(): long
 }
 
 export import class NativeExecResult from "./native_sqlite.hpp" {
-  changes(): int
-  lastInsertRowId(): long
+  isolated changes(): int
+  isolated lastInsertRowId(): long
 }
 
 export import class NativeSqliteStatement from "./native_sqlite.hpp" {
-  bindText(index: int, value: string): Result<void, string>
-  bindInt(index: int, value: int): Result<void, string>
-  bindLong(index: int, value: long): Result<void, string>
-  bindDouble(index: int, value: double): Result<void, string>
-  bindBlob(index: int, value: readonly byte[]): Result<void, string>
-  bindNull(index: int): Result<void, string>
-  step(): Result<bool, string>
-  readCurrentRow(): Result<Map<string, SqliteValue>, string>
-  reset(): Result<void, string>
-  finalize(): Result<void, string>
+  isolated bindText(index: int, value: string): Result<void, string>
+  isolated bindInt(index: int, value: int): Result<void, string>
+  isolated bindLong(index: int, value: long): Result<void, string>
+  isolated bindDouble(index: int, value: double): Result<void, string>
+  isolated bindBlob(index: int, value: readonly byte[]): Result<void, string>
+  isolated bindNull(index: int): Result<void, string>
+  isolated step(): Result<bool, string>
+  isolated readCurrentRow(): Result<Map<string, SqliteValue>, string>
+  isolated reset(): Result<void, string>
+  isolated finalize(): Result<void, string>
 }
 
 export class SqliteError {
