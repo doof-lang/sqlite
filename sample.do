@@ -23,7 +23,7 @@ class SampleOutput {
   todos: Todo[]
 }
 
-function insertTodo(statement: Statement, title: string, done: bool): Result<void, SqliteError> {
+function insertTodo(statement: Statement, title: string, done: bool): Result<none, SqliteError> {
   try execute(statement, [title, done])
   return Success { }
 }
@@ -38,7 +38,7 @@ function readTodo(row: Map<string, SqliteValue>): Result<Todo, SqliteError> {
         stage: "read",
         code: 0,
         message: f.error,
-        sql: null,
+        sql: none,
       }
     }
   }

@@ -1,13 +1,13 @@
 // Thin SQLite wrapper for Doof programs.
 
-export type SqliteParam = int | long | bool | double | string | readonly byte[] | null
-export type SqliteValue = long | double | string | readonly byte[] | null
+export type SqliteParam = int | long | bool | double | string | readonly byte[] | none
+export type SqliteValue = long | double | string | readonly byte[] | none
 
 export import class NativeSqliteDatabase from "./native_sqlite.hpp" {
   isolated static open(path: string): Result<NativeSqliteDatabase, string>
   isolated exec(sql: string): Result<NativeExecResult, string>
   isolated prepare(sql: string): Result<NativeSqliteStatement, string>
-  isolated close(): Result<void, string>
+  isolated close(): Result<none, string>
   isolated changes(): int
   isolated lastInsertRowId(): long
 }
@@ -18,23 +18,23 @@ export import class NativeExecResult from "./native_sqlite.hpp" {
 }
 
 export import class NativeSqliteStatement from "./native_sqlite.hpp" {
-  isolated bindText(index: int, value: string): Result<void, string>
-  isolated bindInt(index: int, value: int): Result<void, string>
-  isolated bindLong(index: int, value: long): Result<void, string>
-  isolated bindDouble(index: int, value: double): Result<void, string>
-  isolated bindBlob(index: int, value: readonly byte[]): Result<void, string>
-  isolated bindNull(index: int): Result<void, string>
+  isolated bindText(index: int, value: string): Result<none, string>
+  isolated bindInt(index: int, value: int): Result<none, string>
+  isolated bindLong(index: int, value: long): Result<none, string>
+  isolated bindDouble(index: int, value: double): Result<none, string>
+  isolated bindBlob(index: int, value: readonly byte[]): Result<none, string>
+  isolated bindNull(index: int): Result<none, string>
   isolated step(): Result<bool, string>
   isolated readCurrentRow(): Result<Map<string, SqliteValue>, string>
-  isolated reset(): Result<void, string>
-  isolated finalize(): Result<void, string>
+  isolated reset(): Result<none, string>
+  isolated finalize(): Result<none, string>
 }
 
 export class SqliteError {
   stage: string
   code: int
   message: string
-  sql: string | null
+  sql: string | none
 }
 
 export class ExecResult {
@@ -62,16 +62,16 @@ export function open(path: string): Result<Database, SqliteError> {
       }
     },
     f: Failure -> Failure {
-      error: decodeError("open", f.error, null)
+      error: decodeError("open", f.error, none)
     }
   }
 }
 
-export function close(database: Database): Result<void, SqliteError> {
-  return mapNativeVoid("close", null, database.native.close())
+export function close(database: Database): Result<none, SqliteError> {
+  return mapNativeVoid("close", none, database.native.close())
 }
 
-function decodeError(stage: string, raw: string, sql: string | null): SqliteError {
+function decodeError(stage: string, raw: string, sql: string | none): SqliteError {
   separator := raw.indexOf("|")
   if separator < 0 {
     return SqliteError {
@@ -93,7 +93,7 @@ function decodeError(stage: string, raw: string, sql: string | null): SqliteErro
   }
 }
 
-function mapNativeVoid(stage: string, sql: string | null, result: Result<void, string>): Result<void, SqliteError> {
+function mapNativeVoid(stage: string, sql: string | none, result: Result<none, string>): Result<none, SqliteError> {
   return case result {
     _: Success -> Success(),
     f: Failure -> Failure {
@@ -118,8 +118,8 @@ function toExecResult(result: NativeExecResult): ExecResult {
   }
 }
 
-function emptyRow(): Map<string, SqliteValue> | null {
-  return null
+function emptyRow(): Map<string, SqliteValue> | none {
+  return none
 }
 
 function readCurrentRow(statement: Statement): Result<Map<string, SqliteValue>, SqliteError> {
@@ -148,31 +148,31 @@ export function prepare(database: Database, sql: string): Result<Statement, Sqli
   }
 }
 
-function bindText(statement: Statement, index: int, value: string): Result<void, SqliteError> {
+function bindText(statement: Statement, index: int, value: string): Result<none, SqliteError> {
   return mapNativeVoid("bind", statement.sql, statement.native.bindText(index, value))
 }
 
-function bindInt(statement: Statement, index: int, value: int): Result<void, SqliteError> {
+function bindInt(statement: Statement, index: int, value: int): Result<none, SqliteError> {
   return mapNativeVoid("bind", statement.sql, statement.native.bindInt(index, value))
 }
 
-function bindLong(statement: Statement, index: int, value: long): Result<void, SqliteError> {
+function bindLong(statement: Statement, index: int, value: long): Result<none, SqliteError> {
   return mapNativeVoid("bind", statement.sql, statement.native.bindLong(index, value))
 }
 
-function bindDouble(statement: Statement, index: int, value: double): Result<void, SqliteError> {
+function bindDouble(statement: Statement, index: int, value: double): Result<none, SqliteError> {
   return mapNativeVoid("bind", statement.sql, statement.native.bindDouble(index, value))
 }
 
-function bindBlob(statement: Statement, index: int, value: readonly byte[]): Result<void, SqliteError> {
+function bindBlob(statement: Statement, index: int, value: readonly byte[]): Result<none, SqliteError> {
   return mapNativeVoid("bind", statement.sql, statement.native.bindBlob(index, value))
 }
 
-function bindNull(statement: Statement, index: int): Result<void, SqliteError> {
+function bindNull(statement: Statement, index: int): Result<none, SqliteError> {
   return mapNativeVoid("bind", statement.sql, statement.native.bindNull(index))
 }
 
-function bindValue(statement: Statement, index: int, value: SqliteParam): Result<void, SqliteError> {
+function bindValue(statement: Statement, index: int, value: SqliteParam): Result<none, SqliteError> {
   return case value {
     text: string -> bindText(statement, index, text),
     flag: bool -> bindInt(statement, index, if flag then 1 else 0),
@@ -184,7 +184,7 @@ function bindValue(statement: Statement, index: int, value: SqliteParam): Result
   }
 }
 
-function bindValues(statement: Statement, values: SqliteParam[] = []): Result<void, SqliteError> {
+function bindValues(statement: Statement, values: SqliteParam[] = []): Result<none, SqliteError> {
   for index of 0..<values.length {
     try bindValue(statement, index + 1, values[index])
   }
@@ -192,16 +192,22 @@ function bindValues(statement: Statement, values: SqliteParam[] = []): Result<vo
   return Success()
 }
 
-function reset(statement: Statement): Result<void, SqliteError> {
+function reset(statement: Statement): Result<none, SqliteError> {
   return mapNativeVoid("reset", statement.sql, statement.native.reset())
 }
 
-function step(statement: Statement): Result<Map<string, SqliteValue> | null, SqliteError> {
-  return case statement.native.step() {
-    s: Success -> if s.value then readCurrentRow(statement) else Success {
-      value: emptyRow()
-    },
-    f: Failure -> Failure {
+function step(statement: Statement): Result<Map<string, SqliteValue> | none, SqliteError> {
+  case statement.native.step() {
+    s: Success -> {
+      if s.value {
+        case readCurrentRow(statement) {
+          row: Success -> return Success { value: row.value }
+          error: Failure -> return Failure { error: error.error }
+        }
+      }
+      return Success { value: emptyRow() }
+    }
+    f: Failure -> return Failure {
       error: decodeError("step", f.error, statement.sql)
     }
   }
@@ -210,7 +216,7 @@ function step(statement: Statement): Result<Map<string, SqliteValue> | null, Sql
 class RowStream implements Stream<Result<Map<string, SqliteValue>, SqliteError> > {
   statement: Statement
   currentRow: Map<string, SqliteValue> = {}
-  currentError: SqliteError | null = null
+  currentError: SqliteError | none = none
 
   next(): bool {
     case statement.native.step() {
@@ -219,7 +225,7 @@ class RowStream implements Stream<Result<Map<string, SqliteValue>, SqliteError> 
           case readCurrentRow(statement) {
             row: Success -> {
               this.currentRow = row.value
-              this.currentError = null
+              this.currentError = none
             }
             err: Failure -> {
               this.currentError = err.error
@@ -238,7 +244,7 @@ class RowStream implements Stream<Result<Map<string, SqliteValue>, SqliteError> 
   }
 
   value(): Result<Map<string, SqliteValue>, SqliteError> {
-    if this.currentError != null {
+    if this.currentError != none {
       return Failure { error: this.currentError! }
     }
     return Success { value: this.currentRow }
@@ -256,7 +262,7 @@ export function execute(statement: Statement, values: SqliteParam[] = []): Resul
   try bindValues(statement, values)
   try row := step(statement)
 
-  if row != null {
+  if row != none {
     return Failure {
       error: unexpectedRowError(statement.sql)
     }
@@ -281,7 +287,7 @@ export function executeSql(database: Database, sql: string): Result<ExecResult, 
   }
 }
 
-export function queryOne(statement: Statement, values: SqliteParam[] = []): Result<Map<string, SqliteValue> | null, SqliteError> {
+export function queryOne(statement: Statement, values: SqliteParam[] = []): Result<Map<string, SqliteValue> | none, SqliteError> {
   try stream := query(statement, values)
   if !stream.next() {
     return Success { value: emptyRow() }
@@ -298,7 +304,7 @@ function toJsonValue(value: SqliteValue): JsonValue {
     whole: long -> return whole
     decimal: double -> return decimal
     text: string -> return text
-    _ -> return null
+    _ -> return none
   }
 }
 
@@ -310,17 +316,17 @@ export function toJsonRow(row: Map<string, SqliteValue>): Map<string, JsonValue>
   return jsonRow
 }
 
-export function begin(database: Database): Result<void, SqliteError> {
+export function begin(database: Database): Result<none, SqliteError> {
   try executeSql(database, "BEGIN TRANSACTION")
   return Success()
 }
 
-export function commit(database: Database): Result<void, SqliteError> {
+export function commit(database: Database): Result<none, SqliteError> {
   try executeSql(database, "COMMIT")
   return Success()
 }
 
-export function rollback(database: Database): Result<void, SqliteError> {
+export function rollback(database: Database): Result<none, SqliteError> {
   try executeSql(database, "ROLLBACK")
   return Success()
 }

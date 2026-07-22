@@ -23,7 +23,7 @@ class BlobRecord {
   payload: readonly byte[]
 }
 
-function assertBytes(actual: readonly byte[], expected: readonly byte[]): void {
+function assertBytes(actual: readonly byte[], expected: readonly byte[]): none {
   assert(actual.length == expected.length, "expected blob lengths to match")
 
   for index of 0..<actual.length {
@@ -39,10 +39,10 @@ function columnValue(row: Map<string, SqliteValue>, name: string): SqliteValue {
   }
 
   assert(false, "expected sqlite row column ${name}")
-  return null
+  return none
 }
 
-function assertBlobValue(value: SqliteValue, expected: readonly byte[]): void {
+function assertBlobValue(value: SqliteValue, expected: readonly byte[]): none {
   case value {
     actual: readonly byte[] -> assertBytes(actual, expected)
     _ -> assert(false, "expected sqlite value to be a blob")
@@ -60,7 +60,7 @@ function createPeopleDatabase(): Result<Database, SqliteError> {
   return Success { value: database }
 }
 
-function insertPerson(database: Database, name: string, score: int, active: bool): Result<void, SqliteError> {
+function insertPerson(database: Database, name: string, score: int, active: bool): Result<none, SqliteError> {
   try statement := prepare(database, "INSERT INTO people(name, score, active) VALUES (?, ?, ?)")
   try execute(statement, [name, score, active])
   return Success()
@@ -70,7 +70,7 @@ function readPerson(row: Map<string, SqliteValue>): Person {
   return try! Person.fromJsonValue(toJsonRow(row), true)
 }
 
-export function testExecuteAndQuery(): void {
+export function testExecuteAndQuery(): none {
   database := try! createPeopleDatabase()
   try! insertPerson(database, "Ada", 99, true)
   try! insertPerson(database, "Grace", 95, false)
@@ -92,7 +92,7 @@ export function testExecuteAndQuery(): void {
   assert(!people[1].active, "expected second person to be inactive")
 }
 
-export function testQueryOneWithParameters(): void {
+export function testQueryOneWithParameters(): none {
   database := try! createPeopleDatabase()
   try! insertPerson(database, "Ada", 99, true)
   try! insertPerson(database, "Grace", 95, false)
@@ -100,13 +100,13 @@ export function testQueryOneWithParameters(): void {
   statement := try! prepare(database, "SELECT id, name, score, active FROM people WHERE name = ?")
   row := try! queryOne(statement, ["Grace"])
 
-  assert(row != null, "expected queryOne row")
+  assert(row != none, "expected queryOne row")
   person := readPerson(row!)
   assert(person.name == "Grace", "expected queryOne name")
   assert(person.score == 95, "expected queryOne score")
 }
 
-export function testExecuteRejectsReturningRows(): void {
+export function testExecuteRejectsReturningRows(): none {
   database := try! createPeopleDatabase()
   statement := try! prepare(database, "SELECT 1 AS value")
   result := execute(statement)
@@ -117,7 +117,7 @@ export function testExecuteRejectsReturningRows(): void {
   }
 }
 
-export function testBlobParametersAndRows(): void {
+export function testBlobParametersAndRows(): none {
   database := try! open(":memory:")
   try! executeSql(database, `CREATE TABLE files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -132,6 +132,6 @@ export function testBlobParametersAndRows(): void {
   selectStatement := try! prepare(database, "SELECT id, payload FROM files WHERE id = ?")
   row := try! queryOne(selectStatement, [insertResult.lastInsertRowId])
 
-  assert(row != null, "expected blob row")
+  assert(row != none, "expected blob row")
   assertBlobValue(columnValue(row!, "payload"), payload)
 }
