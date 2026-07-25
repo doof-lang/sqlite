@@ -1,5 +1,7 @@
 // Thin SQLite wrapper for Doof programs.
 
+import { parseInt } from "std/parse"
+
 export type SqliteParam = int | long | bool | double | string | readonly byte[] | none
 export type SqliteValue = long | double | string | readonly byte[] | none
 
@@ -84,7 +86,7 @@ function decodeError(stage: string, raw: string, sql: string | none): SqliteErro
 
   codeText := raw.substring(0, separator)
   message := raw.slice(separator + 1)
-  code := try? int.parse(codeText) ?? 0
+  code := try? parseInt(codeText) ?? 0
   return SqliteError {
     stage,
     code,
