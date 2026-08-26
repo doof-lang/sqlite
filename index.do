@@ -217,8 +217,8 @@ function step(statement: Statement): Result<Map<string, SqliteValue> | none, Sql
 
 class RowStream implements Stream<Result<Map<string, SqliteValue>, SqliteError> > {
   statement: Statement
-  currentRow: Map<string, SqliteValue> = {}
-  currentError: SqliteError | none = none
+  let currentRow: Map<string, SqliteValue> = {}
+  let currentError: SqliteError | none = none
 
   next(): bool {
     case statement.native.step() {
