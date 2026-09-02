@@ -26,30 +26,38 @@ doof::Result<void, std::string> sqliteOk() {
 
 class NativeExecResult {
 public:
-    NativeExecResult(int32_t changes, int64_t lastInsertRowId)
-        : changes_(changes), lastInsertRowId_(lastInsertRowId) {}
+    NativeExecResult(int64_t rowsAffected, int64_t lastInsertId)
+        : rowsAffected_(rowsAffected), lastInsertId_(lastInsertId) {}
 
-    int32_t changes() const {
-        return changes_;
+    int64_t rowsAffected() const {
+        return rowsAffected_;
     }
 
-    int64_t lastInsertRowId() const {
-        return lastInsertRowId_;
+    int64_t lastInsertId() const {
+        return lastInsertId_;
     }
 
 private:
-    int32_t changes_;
-    int64_t lastInsertRowId_;
+    int64_t rowsAffected_;
+    int64_t lastInsertId_;
 };
 
 using NativeSqliteBlob = std::shared_ptr<std::vector<uint8_t>>;
 using NativeSqliteValue = std::variant<std::monostate, int64_t, double, std::string, NativeSqliteBlob>;
 using NativeSqliteRow = std::shared_ptr<doof::ordered_map<std::string, NativeSqliteValue>>;
 
+struct NativeSqliteConnectionState {
+    bool open = false;
+};
+
 class NativeSqliteStatement {
 public:
-    NativeSqliteStatement(sqlite3_stmt* stmt, std::string sql)
-        : stmt_(stmt), sql_(std::move(sql)) {}
+    NativeSqliteStatement(
+        sqlite3_stmt* stmt,
+        std::string sql,
+        std::shared_ptr<NativeSqliteConnectionState> connectionState
+    )
+        : stmt_(stmt), sql_(std::move(sql)), connectionState_(std::move(connectionState)) {}
 
     ~NativeSqliteStatement() {
         if (stmt_ != nullptr) {
@@ -58,23 +66,42 @@ public:
         }
     }
 
+    int32_t parameterCount() const {
+        return stmt_ != nullptr ? sqlite3_bind_parameter_count(stmt_) : 0;
+    }
+
     doof::Result<void, std::string> bindText(int32_t index, const std::string& value) {
+        if (!isUsable()) {
+            return doof::Failure<std::string>{notUsableError()};
+        }
         return bindResult(sqlite3_bind_text(stmt_, index, value.c_str(), -1, SQLITE_TRANSIENT));
     }
 
     doof::Result<void, std::string> bindInt(int32_t index, int32_t value) {
+        if (!isUsable()) {
+            return doof::Failure<std::string>{notUsableError()};
+        }
         return bindResult(sqlite3_bind_int(stmt_, index, value));
     }
 
     doof::Result<void, std::string> bindLong(int32_t index, int64_t value) {
+        if (!isUsable()) {
+            return doof::Failure<std::string>{notUsableError()};
+        }
         return bindResult(sqlite3_bind_int64(stmt_, index, value));
     }
 
     doof::Result<void, std::string> bindDouble(int32_t index, double value) {
+        if (!isUsable()) {
+            return doof::Failure<std::string>{notUsableError()};
+        }
         return bindResult(sqlite3_bind_double(stmt_, index, value));
     }
 
     doof::Result<void, std::string> bindBlob(int32_t index, const NativeSqliteBlob& value) {
+        if (!isUsable()) {
+            return doof::Failure<std::string>{notUsableError()};
+        }
         const auto& bytes = value != nullptr ? *value : emptyBlob();
         if (bytes.size() > static_cast<size_t>(std::numeric_limits<int>::max())) {
             return doof::Failure<std::string>{encodeSqliteError(SQLITE_TOOBIG, "BLOB parameter is too large")};
@@ -85,12 +112,15 @@ public:
     }
 
     doof::Result<void, std::string> bindNull(int32_t index) {
+        if (!isUsable()) {
+            return doof::Failure<std::string>{notUsableError()};
+        }
         return bindResult(sqlite3_bind_null(stmt_, index));
     }
 
     doof::Result<bool, std::string> step() {
-        if (stmt_ == nullptr) {
-            return doof::Failure<std::string>{encodeSqliteError(SQLITE_MISUSE, "statement is already finalized")};
+        if (!isUsable()) {
+            return doof::Failure<std::string>{notUsableError()};
         }
 
         const int rc = sqlite3_step(stmt_);
@@ -104,8 +134,8 @@ public:
     }
 
     doof::Result<void, std::string> reset() {
-        if (stmt_ == nullptr) {
-            return doof::Failure<std::string>{encodeSqliteError(SQLITE_MISUSE, "statement is already finalized")};
+        if (!isUsable()) {
+            return doof::Failure<std::string>{notUsableError()};
         }
 
         const int resetRc = sqlite3_reset(stmt_);
@@ -136,8 +166,8 @@ public:
     }
 
     doof::Result<NativeSqliteRow, std::string> readCurrentRow() {
-        if (stmt_ == nullptr) {
-            return doof::Failure<std::string>{encodeSqliteError(SQLITE_MISUSE, "statement is already finalized")};
+        if (!isUsable()) {
+            return doof::Failure<std::string>{notUsableError()};
         }
         if (sqlite3_data_count(stmt_) == 0) {
             return doof::Failure<std::string>{encodeSqliteError(SQLITE_MISUSE, "statement is not positioned on a row")};
@@ -197,7 +227,22 @@ public:
         return doof::Success<NativeSqliteRow>{row};
     }
 
+    bool hasResultSet() const {
+        return stmt_ != nullptr && sqlite3_column_count(stmt_) > 0;
+    }
+
 private:
+    bool isUsable() const {
+        return stmt_ != nullptr && connectionState_ != nullptr && connectionState_->open;
+    }
+
+    std::string notUsableError() const {
+        return encodeSqliteError(
+            SQLITE_MISUSE,
+            stmt_ == nullptr ? "statement is already finalized" : "database is not open"
+        );
+    }
+
     static const std::vector<uint8_t>& emptyBlob() {
         static const std::vector<uint8_t> empty;
         return empty;
@@ -222,6 +267,7 @@ private:
 
     sqlite3_stmt* stmt_ = nullptr;
     std::string sql_;
+    std::shared_ptr<NativeSqliteConnectionState> connectionState_;
 };
 
 class NativeSqliteDatabase {
@@ -238,6 +284,7 @@ public:
     NativeSqliteDatabase() = default;
 
     ~NativeSqliteDatabase() {
+        connectionState_->open = false;
         if (db_ != nullptr) {
             sqlite3_close_v2(db_);
             db_ = nullptr;
@@ -259,7 +306,7 @@ public:
             return doof::Failure<std::string>{encodeSqliteError(rc, text)};
         }
 
-        return doof::Success<std::shared_ptr<NativeExecResult>>{std::make_shared<NativeExecResult>(sqlite3_changes(db_), sqlite3_last_insert_rowid(db_))};
+        return doof::Success<std::shared_ptr<NativeExecResult>>{std::make_shared<NativeExecResult>(static_cast<int64_t>(sqlite3_changes(db_)), sqlite3_last_insert_rowid(db_))};
     }
 
     doof::Result<std::shared_ptr<NativeSqliteStatement>, std::string> prepare(const std::string& sql) {
@@ -276,7 +323,9 @@ public:
             return doof::Failure<std::string>{encodeSqliteError(SQLITE_MISUSE, "SQL did not contain a statement")};
         }
 
-        return doof::Success<std::shared_ptr<NativeSqliteStatement>>{std::make_shared<NativeSqliteStatement>(stmt, sql)};
+        return doof::Success<std::shared_ptr<NativeSqliteStatement>>{
+            std::make_shared<NativeSqliteStatement>(stmt, sql, connectionState_)
+        };
     }
 
     doof::Result<void, std::string> close() {
@@ -290,17 +339,18 @@ public:
         }
 
         db_ = nullptr;
+        connectionState_->open = false;
         return sqliteOk();
     }
 
-    int32_t changes() const {
+    int64_t rowsAffected() const {
         if (db_ == nullptr) {
             return 0;
         }
-        return sqlite3_changes(db_);
+        return static_cast<int64_t>(sqlite3_changes(db_));
     }
 
-    int64_t lastInsertRowId() const {
+    int64_t lastInsertId() const {
         if (db_ == nullptr) {
             return 0;
         }
@@ -309,7 +359,6 @@ public:
 
 private:
     int openInternal(const std::string& path) {
-        path_ = path;
         sqlite3* raw = nullptr;
         const int rc = sqlite3_open(path.c_str(), &raw);
         if (rc != SQLITE_OK) {
@@ -322,6 +371,7 @@ private:
         }
 
         db_ = raw;
+        connectionState_->open = true;
         openError_ = std::nullopt;
         return SQLITE_OK;
     }
@@ -331,6 +381,6 @@ private:
     }
 
     sqlite3* db_ = nullptr;
-    std::string path_;
     std::optional<std::string> openError_;
+    std::shared_ptr<NativeSqliteConnectionState> connectionState_ = std::make_shared<NativeSqliteConnectionState>();
 };

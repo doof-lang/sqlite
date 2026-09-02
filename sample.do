@@ -19,7 +19,7 @@ class Todo {
 
 class SampleOutput {
   databasePath: string
-  removed: int
+  removed: long
   todos: Todo[]
 }
 
@@ -36,8 +36,10 @@ function readTodo(row: Map<string, SqliteValue>): Result<Todo, SqliteError> {
     f: Failure -> Failure {
       error: SqliteError {
         stage: "read",
-        code: 0,
+        code: none,
+        sqlState: none,
         message: f.error,
+        detail: none,
         sql: none,
       }
     }
@@ -79,7 +81,7 @@ function runSample(databasePath: string): Result<SampleOutput, SqliteError> {
   return Success {
     value: SampleOutput {
       databasePath,
-      removed: cleared.changes,
+      removed: cleared.rowsAffected,
       todos,
     }
   }

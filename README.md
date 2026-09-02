@@ -67,8 +67,8 @@ Execute one or more SQL statements directly with SQLite. This is useful for sche
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `changes` | `int` | Rows changed by the statement |
-| `lastInsertRowId` | `long` | SQLite last insert rowid |
+| `rowsAffected` | `long` | Rows changed by the statement |
+| `lastInsertId` | `long` | SQLite last insert rowid |
 
 ### `prepare(database: Database, sql: string): Result<Statement, SqliteError>`
 
@@ -76,12 +76,12 @@ Compile a reusable statement. Parameters use SQLite's positional `?` placeholder
 
 ### `execute(statement: Statement, values: SqliteParam[] = []): Result<ExecResult, SqliteError>`
 
-Reset, bind, and run a prepared statement that should not return rows. If the statement does produce a row, `execute` fails so accidental `SELECT` calls do not silently discard data.
+Reset, bind, and run a prepared statement that should not return columns. `execute` rejects queries even when their result set is empty.
 
 ```doof
 insertUser := try prepare(database, "INSERT INTO users(name, active) VALUES (?, ?)")
 result := try execute(insertUser, ["Ada", true])
-println("inserted row ${result.lastInsertRowId}")
+println("inserted row ${result.lastInsertId}")
 ```
 
 BLOB parameters can be bound directly as byte arrays:
@@ -127,6 +127,8 @@ All public operations return `Result<_, SqliteError>`. `SqliteError` includes:
 | Field | Type | Description |
 |-------|------|-------------|
 | `stage` | `string` | Operation stage such as `open`, `prepare`, `bind`, `step`, or `read` |
-| `code` | `int` | SQLite result code when available |
+| `code` | `string | null` | SQLite result code when available |
+| `sqlState` | `string | null` | Always `null`; included for a consistent database error shape |
 | `message` | `string` | Human-readable error message |
+| `detail` | `string | null` | Always `null`; included for a consistent database error shape |
 | `sql` | `string | null` | SQL text associated with the error when available |
