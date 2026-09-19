@@ -328,7 +328,7 @@ export function queryOne(statement: Statement, values: SqliteParam[] = []): Resu
   }
 }
 
-function toJsonValue(value: SqliteValue): JsonValue {
+function toSerialValue(value: SqliteValue): SerialValue {
   case value {
     whole: long -> return whole
     decimal: double -> return decimal
@@ -337,10 +337,10 @@ function toJsonValue(value: SqliteValue): JsonValue {
   }
 }
 
-export function toJsonRow(row: Map<string, SqliteValue>): Map<string, JsonValue> {
-  jsonRow: Map<string, JsonValue> := {}
+export function toJsonRow(row: Map<string, SqliteValue>): Map<string, SerialValue> {
+  jsonRow: Map<string, SerialValue> := {}
   for key, value of row {
-    jsonRow[key] = toJsonValue(value)
+    jsonRow[key] = toSerialValue(value)
   }
   return jsonRow
 }

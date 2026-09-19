@@ -68,7 +68,7 @@ function insertPerson(database: Database, name: string, score: int, active: bool
 }
 
 function readPerson(row: Map<string, SqliteValue>): Person {
-  return try! Person.fromJsonValue(toJsonRow(row), true)
+  return try! Person.fromSerialValue(toJsonRow(row), true)
 }
 
 export function testExecuteAndQuery(): none {

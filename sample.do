@@ -29,7 +29,7 @@ function insertTodo(statement: Statement, title: string, done: bool): Result<non
 }
 
 function readTodo(row: Map<string, SqliteValue>): Result<Todo, SqliteError> {
-  return case Todo.fromJsonValue(toJsonRow(row), true) {
+  return case Todo.fromSerialValue(toJsonRow(row), true) {
     s: Success -> Success {
       value: s.value
     },

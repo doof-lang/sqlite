@@ -36,7 +36,7 @@ stream := try query(selectTodos)
 
 for item of stream {
   row := try item
-  todo := try Todo.fromJsonValue(toJsonRow(row), true)
+  todo := try Todo.fromSerialValue(toJsonRow(row), true)
   println("#${todo.id}: ${todo.title}")
 }
 ```

@@ -31,7 +31,7 @@ Rows are `Map<string, SqliteValue>`, where SQLite integers are returned as
 `readonly byte[]`, and nulls as `null`.
 
 `toJsonRow(row)` converts rows into JSON-friendly values. Blob values become
-`null`, which keeps typed `.fromJsonValue(...)` decoding predictable.
+`null`, which keeps typed `.fromSerialValue(...)` decoding predictable.
 
 ## Streaming Queries
 
