@@ -337,12 +337,12 @@ function toSerialValue(value: SqliteValue): SerialValue {
   }
 }
 
-export function toJsonRow(row: Map<string, SqliteValue>): Map<string, SerialValue> {
+export function toJsonRow(row: Map<string, SqliteValue>): readonly Map<string, SerialValue> {
   jsonRow: Map<string, SerialValue> := {}
   for key, value of row {
     jsonRow[key] = toSerialValue(value)
   }
-  return jsonRow
+  return jsonRow.drainToReadonly()
 }
 
 export function begin(database: Database): Result<none, SqliteError> {
