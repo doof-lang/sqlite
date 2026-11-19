@@ -53,7 +53,8 @@ function fetchTodos(database: Database): Result<Todo[], SqliteError> {
   todos: Todo[] := []
 
   for row of stream {
-    try todo := readTodo(row!)
+    try record := row
+    try todo := readTodo(record)
     todos.push(todo)
   }
 

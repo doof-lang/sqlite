@@ -273,8 +273,8 @@ class RowStream implements Stream<Result<Map<string, SqliteValue>, SqliteError> 
   }
 
   value(): Result<Map<string, SqliteValue>, SqliteError> {
-    if this.currentError != none {
-      return Failure { error: this.currentError! }
+    if error := this.currentError {
+      return Failure { error }
     }
     return Success { value: this.currentRow }
   }

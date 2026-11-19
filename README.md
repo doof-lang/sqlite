@@ -43,9 +43,9 @@ for item of stream {
 
 ## Values
 
-SQLite parameters accept `int | long | bool | double | string | readonly byte[] | null`.
+SQLite parameters accept `int | long | bool | double | string | readonly byte[] | none`.
 
-Rows return `Map<string, SqliteValue>`, where `SqliteValue` is `long | double | string | readonly byte[] | null`. SQLite integers are read as `long`; BLOB columns are read as `readonly byte[]`; booleans are conventionally stored as `0` or `1` and can be mapped through `toJsonRow(...)` into Doof classes with `bool` fields.
+Rows return `Map<string, SqliteValue>`, where `SqliteValue` is `long | double | string | readonly byte[] | none`. SQLite integers are read as `long`; BLOB columns are read as `readonly byte[]`; booleans are conventionally stored as `0` or `1` and can be mapped through `toJsonRow(...)` into Doof classes with `bool` fields.
 
 `toJsonRow(...)` converts BLOB values to null.
 
@@ -55,7 +55,7 @@ Rows return `Map<string, SqliteValue>`, where `SqliteValue` is `long | double | 
 
 Open a database file. Use `":memory:"` for an in-memory database.
 
-### `close(database: Database): Result<void, SqliteError>`
+### `close(database: Database): Result<none, SqliteError>`
 
 Close a database. Calling `close` more than once is safe.
 
@@ -106,9 +106,9 @@ for item of stream {
 }
 ```
 
-### `queryOne(statement: Statement, values: SqliteParam[] = []): Result<Map<string, SqliteValue> | null, SqliteError>`
+### `queryOne(statement: Statement, values: SqliteParam[] = []): Result<Map<string, SqliteValue> | none, SqliteError>`
 
-Return the first row from a query, or `null` if there are no rows. Additional rows are ignored.
+Return the first row from a query, or `none` if there are no rows. Additional rows are ignored.
 
 ### `begin(database)`, `commit(database)`, `rollback(database)`
 
@@ -127,8 +127,8 @@ All public operations return `Result<_, SqliteError>`. `SqliteError` includes:
 | Field | Type | Description |
 |-------|------|-------------|
 | `stage` | `string` | Operation stage such as `open`, `prepare`, `bind`, `step`, or `read` |
-| `code` | `string | null` | SQLite result code when available |
-| `sqlState` | `string | null` | Always `null`; included for a consistent database error shape |
+| `code` | `string | none` | SQLite result code when available |
+| `sqlState` | `string | none` | Always `none`; included for a consistent database error shape |
 | `message` | `string` | Human-readable error message |
-| `detail` | `string | null` | Always `null`; included for a consistent database error shape |
-| `sql` | `string | null` | SQL text associated with the error when available |
+| `detail` | `string | none` | Always `none`; included for a consistent database error shape |
+| `sql` | `string | none` | SQL text associated with the error when available |

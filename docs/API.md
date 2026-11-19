@@ -20,18 +20,18 @@ Use `executeSql` for schema setup, pragmas, and transaction control. Use
 Parameters accept:
 
 ```doof
-int | long | bool | double | string | readonly byte[] | null
+int | long | bool | double | string | readonly byte[] | none
 ```
 
 The number of supplied values must exactly match the prepared statement's
-placeholder count. Pass `null` explicitly for SQL `NULL`.
+placeholder count. Pass `none` explicitly for SQL `NULL`.
 
 Rows are `Map<string, SqliteValue>`, where SQLite integers are returned as
 `long`, floating point values as `double`, text as `string`, blobs as
-`readonly byte[]`, and nulls as `null`.
+`readonly byte[]`, and nulls as `none`.
 
 `toJsonRow(row)` converts rows into JSON-friendly values. Blob values become
-`null`, which keeps typed `.fromSerialValue(...)` decoding predictable.
+`none`, which keeps typed `.fromSerialValue(...)` decoding predictable.
 
 ## Streaming Queries
 
@@ -40,7 +40,7 @@ Rows are `Map<string, SqliteValue>`, where SQLite integers are returned as
 are returned immediately; row-reading failures are reported at the point the row
 is pulled.
 
-`queryOne` returns the first row or `null` and ignores additional rows.
+`queryOne` returns the first row or `none` and ignores additional rows.
 After a row-reading error, a stream is terminal and yields no further items.
 
 `execute` rejects any statement that returns columns, even if its result set is
